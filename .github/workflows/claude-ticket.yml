@@ -1,0 +1,30 @@
+name: Claude ticket
+
+# Zlecenie zgłoszenia z Linear agentowi (BRO-33): Actions → "Claude ticket" → Run workflow.
+# Na razie tylko walidacja numeru; Claude zostanie podłączony w kolejnym PR.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ticket:
+        description: "Numer zgłoszenia z Linear, np. BRO-11"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  claude-ticket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Validate ticket id
+        env:
+          TICKET: ${{ inputs.ticket }}
+        run: |
+          if [[ ! "$TICKET" =~ ^BRO-[0-9]+$ ]]; then
+            echo "::error::Nieprawidłowy numer zgłoszenia: '$TICKET' (oczekiwano np. BRO-11)"
+            exit 1
+          fi
+          echo "Zgłoszenie: $TICKET"
