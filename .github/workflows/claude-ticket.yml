@@ -25,7 +25,7 @@ concurrency:
 jobs:
   claude-ticket:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       RAILS_ENV: test
       BUNDLE_WITHOUT: development
@@ -66,7 +66,7 @@ jobs:
                Jeśli zgłoszenie nie ma etykiety „agent”, jest zamknięte albo niejasne — niczego nie zmieniaj, opisz powód w podsumowaniu i zakończ.
             2. Stosuj zasady z CLAUDE.md.
             3. Utwórz gałąź: `git checkout -b <numer małymi literami>-<krótki-opis>` (kebab-case, bez polskich znaków), np. `bro-41-readme-automatyzacja`.
-            4. Wprowadź zmiany. Uruchom `bundle exec rspec` i napraw błędy.
+            4. Wprowadź zmiany. Pliki przenoś `git mv`, usuwaj `git rm` (zachowuje historię i oszczędza tury). Uruchom `bundle exec rspec` i napraw błędy.
             5. `git add` zmienionych plików, `git commit -m "${{ inputs.ticket }}: <opis>"`, `git push -u origin <gałąź>`.
             6. Otwórz PR narzędziem mcp__github__create_pull_request (owner: ${{ github.repository_owner }}, repo: ${{ github.event.repository.name }}, base: main):
                - tytuł: `${{ inputs.ticket }}: <tytuł zgłoszenia>`,
@@ -76,9 +76,9 @@ jobs:
           # Linear MCP musi być inline JSON: akcja scala --mcp-config tylko w tej postaci,
           # ścieżkę do pliku pomija, gdy dodaje własne serwery. Klucz z sekretu (maskowany w logach).
           claude_args: |
-            --max-turns 30
+            --max-turns 80
             --mcp-config '{"mcpServers":{"linear":{"type":"http","url":"https://mcp.linear.app/mcp","headers":{"Authorization":"Bearer ${{ secrets.LINEAR_API_KEY }}"}}}}'
-            --allowedTools "mcp__linear__get_issue,mcp__linear__list_comments,mcp__github__create_pull_request,Read,Edit,Write,Glob,Grep,Bash(git checkout -b:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(bundle exec rspec:*)"
+            --allowedTools "mcp__linear__get_issue,mcp__linear__list_comments,mcp__github__create_pull_request,Read,Edit,Write,Glob,Grep,Bash(git checkout -b:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git mv:*),Bash(git rm:*),Bash(git commit:*),Bash(git push:*),Bash(bundle exec rspec:*),Bash(bin/rails -T:*)"
 
       # Pełny log Claude jest ukryty (publiczne repo). W podsumowaniu przebiegu tylko:
       # stan serwerów MCP, wywołane narzędzia (bez argumentów i wyników) i końcowy komunikat.
@@ -93,6 +93,8 @@ jobs:
             jq -r '.[] | select(.type == "system" and .subtype == "init") | .mcp_servers[]? | "- \(.name): \(.status)"' "$EXECUTION_FILE"
             echo "### Wywołane narzędzia"
             jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name] | group_by(.) | .[] | "- \(.[0]) ×\(length)"' "$EXECUTION_FILE"
+            echo "### Przebieg"
+            jq -r '.[] | select(.type == "result") | "- status: \(.subtype), tury: \(.num_turns), czas: \((.duration_ms // 0) / 1000 | floor) s"' "$EXECUTION_FILE"
             echo "### Wynik"
             jq -r '.[] | select(.type == "result") | .result // "(brak)"' "$EXECUTION_FILE"
           } | tee -a "$GITHUB_STEP_SUMMARY"
