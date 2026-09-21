@@ -68,3 +68,7 @@ Zatrzymaj proces `ssh` kombinacją `Ctrl+C`.
 Nie uruchamiaj `rails server -b 0.0.0.0` i nie publikuj portów kontenerów na `0.0.0.0`.
 Porty publikowane przez Dockera omijają reguły `ufw` (zob. dokumentacja Docker dot.
 [packet filtering and firewalls](https://docs.docker.com/engine/network/packet-filtering-firewalls/)).
+
+## Automatyzacja
+
+Zgłoszenia z Linear z etykietą „agent” można zlecić Claude'owi: GitHub → Actions → „Claude ticket” → Run workflow → numer zgłoszenia (np. `BRO-11`). Claude otwiera PR, który przegląda i scala człowiek.
