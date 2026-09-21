@@ -9,8 +9,11 @@
 
 - Jedno zgłoszenie = jedna gałąź i jeden PR.
 - Nazwa gałęzi zaczyna się od numeru zgłoszenia, np. `bro-12-krotki-opis`.
-- Opis PR: `Fixes BRO-<numer>` + lista sprawdzonych kryteriów akceptacji.
+- Opis PR: `Fixes [BRO-<numer>](https://linear.app/browarek/issue/BRO-<numer>)` + lista
+  kryteriów akceptacji; `[x]` tylko przy faktycznie sprawdzonych.
 - Przed PR uruchom testy i napraw błędy.
+- Zgłoszenia czytaj z Linear (MCP). Zlecanie agentowi: Actions → „Claude ticket” →
+  Run workflow → `BRO-<numer>`; poprawki: `@claude …` w PR.
 
 ## Kontekst projektu
 
