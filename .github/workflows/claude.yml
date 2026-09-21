@@ -31,6 +31,16 @@ jobs:
         with:
           fetch-depth: 1
 
+      # Odczyt zgłoszeń z Linear (BRO-33). Klucz tylko w pliku tymczasowym runnera.
+      - name: Linear MCP config
+        env:
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+        run: |
+          umask 077
+          jq -n --arg key "$LINEAR_API_KEY" \
+            '{mcpServers: {linear: {type: "http", url: "https://mcp.linear.app/mcp", headers: {Authorization: ("Bearer " + $key)}}}}' \
+            > "$RUNNER_TEMP/linear-mcp.json"
+
       - name: Run Claude Code
         id: claude
         uses: anthropics/claude-code-action@v1
@@ -44,7 +54,13 @@ jobs:
           # Optional: Give a custom prompt to Claude. If this is not specified, Claude will perform the instructions specified in the comment that tagged it.
           # prompt: 'Update the pull request description to include a summary of changes.'
 
-          # Limit usage per run (BRO-10)
+          # Gałąź z tytułu issue, np. "BRO-11: README …" → bro-11-readme-…-<czas> (BRO-33)
+          branch_name_template: "{{description}}-{{timestamp}}"
+
+          # Limit usage per run (BRO-10); Linear read-only tools (BRO-33)
           # See https://code.claude.com/docs/en/cli-reference for available options
-          claude_args: "--max-turns 30"
+          claude_args: |
+            --max-turns 30
+            --mcp-config ${{ runner.temp }}/linear-mcp.json
+            --allowedTools "mcp__linear__get_issue,mcp__linear__list_comments"
 
