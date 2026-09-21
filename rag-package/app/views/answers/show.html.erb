@@ -1,0 +1,26 @@
+<turbo-frame id="rag_answer">
+  <% if @answer.nil? || @answer.status == :error %>
+    <p role="alert">Asystent AI jest chwilowo niedostępny. Skorzystaj z wyników wyszukiwania.</p>
+  <% elsif @answer.status == :rate_limited %>
+    <p role="alert">Wyczerpany limit zapytań do Gemini. Skorzystaj z wyników wyszukiwania albo spróbuj później.</p>
+  <% elsif @answer.status == :not_in_docs %>
+    <p>Asystent AI nie znalazł odpowiedzi w dokumentacji. Sprawdź wyniki wyszukiwania.</p>
+  <% elsif @answer.status == :ok %>
+    <section aria-label="Odpowiedź asystenta AI">
+      <p><strong>Odpowiedź wygenerowana przez AI na podstawie instrukcji. Sprawdź w źródłach.</strong></p>
+      <%= doc_markdown(@answer.text) %>
+      <% if @answer.finish_reason == "MAX_TOKENS" %>
+        <p>Odpowiedź została ucięta. Pełne kroki są w instrukcjach.</p>
+      <% end %>
+      <p>Źródła:</p>
+      <ol>
+        <% @answer.sources.each do |s| %>
+          <li>
+            <%= link_to s[:title], doc_path(Rag::Index.id_for(s[:source])), data: { turbo_frame: "_top" } %>
+            <% if (section = doc_section(s[:heading])) %> - <%= section %><% end %>
+          </li>
+        <% end %>
+      </ol>
+    </section>
+  <% end %>
+</turbo-frame>

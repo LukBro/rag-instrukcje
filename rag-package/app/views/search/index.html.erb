@@ -1,0 +1,42 @@
+<h1>Pomoc</h1>
+
+<%= form_with url: search_path, method: :get do |f| %>
+  <%= f.label :q, "Opisz, co chcesz zrobić" %>
+  <%= f.search_field :q, value: @question, required: true, autofocus: true %>
+  <%= f.submit "Szukaj", name: nil %>
+  <% if Rag::Answer.enabled?(env: Rails.env) %>
+    <p>Nie wpisuj danych osobowych: pytanie jest wysyłane do Google Gemini.</p>
+  <% end %>
+<% end %>
+
+<% if @error %>
+  <p role="alert"><%= @error %></p>
+<% elsif @result&.found? %>
+  <% if Rag::Answer.enabled?(env: Rails.env) %>
+    <turbo-frame id="rag_answer" src="<%= answer_path(q: @question) %>">
+      <p>Generowanie odpowiedzi… <%= link_to "Pokaż odpowiedź asystenta AI", answer_path(q: @question) %></p>
+    </turbo-frame>
+  <% end %>
+
+  <% @result.results.each_with_index do |r, i| %>
+    <%= tag.details(open: i.zero?) do %>
+      <summary>
+        <strong><%= r[:title] %></strong>
+        <% if (section = doc_section(r[:heading])) %> - <%= section %><% end %>
+        <% if i.zero? %> (najlepsze dopasowanie)<% end %>
+      </summary>
+      <%= doc_markdown(r[:content]) %>
+      <p><%= link_to "Pełna instrukcja", doc_path(Rag::Index.id_for(r[:source])) %></p>
+    <% end %>
+  <% end %>
+<% elsif @result %>
+  <p>Nie znaleziono instrukcji na ten temat. Spróbuj opisać czynność innymi słowami.</p>
+  <% if @result.suggestions.any? %>
+    <p>Najbliższe tematy:</p>
+    <ul>
+      <% @result.suggestions.each do |s| %>
+        <li><%= link_to s[:title], doc_path(Rag::Index.id_for(s[:source])) %></li>
+      <% end %>
+    </ul>
+  <% end %>
+<% end %>

@@ -1,0 +1,13 @@
+# Zbiór ewaluacyjny (rake rag:eval).
+# question: pytanie tak, jak zada je użytkownik - nie kopiuj tytułu instrukcji.
+# expected_sources: pliki z odpowiedzią. Pusta lista = pytanie spoza dokumentacji (kalibracja progu).
+# Uwzględnij: pytania potoczne, ogólne, złożone (dwa pliki), tak/nie, z literówkami, spoza zakresu.
+- question: "<pytanie potoczne>"
+  expected_sources:
+    - docs/user/<plik>.md
+- question: "<pytanie złożone dotyczące dwóch czynności>"
+  expected_sources:
+    - docs/user/<plik1>.md
+    - docs/user/<plik2>.md
+- question: "<pytanie spoza zakresu dokumentacji>"
+  expected_sources: []
