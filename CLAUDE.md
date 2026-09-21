@@ -22,7 +22,8 @@
 - Aplikacja jest **wyłącznie API** (`rails new --api`): bez widoków, helperów i JavaScriptu;
   odpowiedzi tylko JSON; główny endpoint `POST /api/ask`.
 - Repozytorium jest **publiczne**: żadnych kluczy, tokenów, haseł ani adresów serwera
-  w kodzie, commitach i opisach PR.
+  w kodzie, commitach i opisach PR; wartości tylko w zmiennych środowiskowych i sekretach
+  GitHub. Wyciek: README → „Wyciek sekretu — co robić”.
 
 ## Zakazy
 

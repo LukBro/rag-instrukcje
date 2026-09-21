@@ -1,0 +1,19 @@
+#!/bin/sh
+# Skan sekretów w zmianach przed commitem (BRO-39).
+# Instalacja: README → „Ochrona przed wyciekiem sekretów”.
+# Nie wyłączaj hooka (--no-verify) bez wpisu w komentarzu PR, dlaczego.
+
+REQUIRED_VERSION="8.30.1"
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: brak gitleaks (wymagana wersja $REQUIRED_VERSION) — zobacz README" >&2
+  exit 1
+fi
+
+installed_version=$(gitleaks version)
+if [ "$installed_version" != "$REQUIRED_VERSION" ]; then
+  echo "pre-commit: gitleaks $installed_version, wymagana $REQUIRED_VERSION — zobacz README" >&2
+  exit 1
+fi
+
+exec gitleaks git --pre-commit --staged --redact --no-banner --verbose
