@@ -23,6 +23,10 @@ Things you may want to cover:
 
 * ...
 
+## Testy
+
+Testy uruchamiasz poleceniem `bundle exec rspec`. CI na GitHubie uruchamia je na każdym PR i przed scaleniem muszą przejść.
+
 ## Dostęp do API
 
 Aplikacja na serwerze to wyłącznie API (bez widoków). Działa w trybie development i
