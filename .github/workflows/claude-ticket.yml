@@ -64,6 +64,7 @@ jobs:
             > "$RUNNER_TEMP/linear-mcp.json"
 
       - name: Run Claude Code
+        id: claude
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -71,6 +72,7 @@ jobs:
             Zaimplementuj zgłoszenie ${{ inputs.ticket }} z Linear.
 
             1. Przeczytaj zgłoszenie narzędziem mcp__linear__get_issue (id: ${{ inputs.ticket }}) i jego komentarze (mcp__linear__list_comments). Zakres i kryteria akceptacji ze zgłoszenia są definicją „gotowe”.
+               Jeśli narzędzia Linear są niedostępne albo zwracają błąd — podaj w podsumowaniu dokładny komunikat błędu i zakończ.
                Jeśli zgłoszenie nie ma etykiety „agent”, jest zamknięte albo niejasne — niczego nie zmieniaj, opisz powód w podsumowaniu i zakończ.
             2. Stosuj zasady z CLAUDE.md.
             3. Utwórz gałąź: `git checkout -b <numer małymi literami>-<krótki-opis>` (kebab-case, bez polskich znaków), np. `bro-41-readme-automatyzacja`.
@@ -85,3 +87,20 @@ jobs:
             --max-turns 30
             --mcp-config ${{ runner.temp }}/linear-mcp.json
             --allowedTools "mcp__linear__get_issue,mcp__linear__list_comments,mcp__github__create_pull_request,Read,Edit,Write,Glob,Grep,Bash(git checkout -b:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git commit:*),Bash(git push:*),Bash(bundle exec rspec:*)"
+
+      # Pełny log Claude jest ukryty (publiczne repo). W podsumowaniu przebiegu tylko:
+      # stan serwerów MCP, wywołane narzędzia (bez argumentów i wyników) i końcowy komunikat.
+      - name: Summary
+        if: always() && steps.claude.outputs.execution_file != ''
+        env:
+          EXECUTION_FILE: ${{ steps.claude.outputs.execution_file }}
+        run: |
+          {
+            echo "## Claude ticket: ${{ inputs.ticket }}"
+            echo "### Serwery MCP"
+            jq -r '.[] | select(.type == "system" and .subtype == "init") | .mcp_servers[]? | "- \(.name): \(.status)"' "$EXECUTION_FILE"
+            echo "### Wywołane narzędzia"
+            jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name] | group_by(.) | .[] | "- \(.[0]) ×\(length)"' "$EXECUTION_FILE"
+            echo "### Wynik"
+            jq -r '.[] | select(.type == "result") | .result // "(brak)"' "$EXECUTION_FILE"
+          } >> "$GITHUB_STEP_SUMMARY"
