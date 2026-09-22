@@ -64,7 +64,7 @@ jobs:
             1. Przeczytaj zgłoszenie narzędziem mcp__linear__get_issue (id: ${{ inputs.ticket }}) i jego komentarze (mcp__linear__list_comments). Zakres i kryteria akceptacji ze zgłoszenia są definicją „gotowe”.
                Jeśli narzędzia Linear są niedostępne albo zwracają błąd — podaj w podsumowaniu dokładny komunikat błędu i zakończ.
                Jeśli zgłoszenie nie ma etykiety „agent”, jest zamknięte albo niejasne — niczego nie zmieniaj, opisz powód w podsumowaniu i zakończ.
-            2. Stosuj zasady z CLAUDE.md.
+            2. Stosuj zasady z CLAUDE.md. Pracuj w jednym ciągu, bez zadań w tle: przebieg jest nieinteraktywny, więc zakończenie odpowiedzi kończy sesję i nic potem nie wraca. Nie kończ, dopóki PR nie jest otwarty albo nie opiszesz w podsumowaniu, dlaczego przerwałeś.
             3. Utwórz gałąź: `git checkout -b <numer małymi literami>-<krótki-opis>` (kebab-case, bez polskich znaków), np. `bro-41-readme-automatyzacja`.
             4. Wprowadź zmiany. Pliki przenoś `git mv`, usuwaj `git rm` (zachowuje historię i oszczędza tury). Uruchom `bundle exec rspec` i napraw błędy.
                Uprawnienia (każde odrzucone wywołanie zjada turę):
@@ -84,14 +84,18 @@ jobs:
           # --max-turns to bezpiecznik przed zapętleniem, nie budżet pracy: BRO-14 lokalnie 93 tury,
           # zgłoszenia w podobnych projektach 230–330 wywołań. Czas i koszt ogranicza timeout-minutes
           # (~80 tur ≈ 8 min), a wczesny push chroni pracę przy przekroczeniu (BRO-43).
+          # --disallowedTools: narzędzia asynchroniczne nie wymagają zgody, a w trybie -p ich wynik
+          # nie wraca — agent zlecał podagenta w tle i kończył turę bez żadnej pracy (BRO-45).
           claude_args: |
             --max-turns 250
+            --disallowedTools "Agent,ScheduleWakeup,Monitor,Workflow,CronCreate,RemoteTrigger"
             --mcp-config '{"mcpServers":{"linear":{"type":"http","url":"https://mcp.linear.app/mcp","headers":{"Authorization":"Bearer ${{ secrets.LINEAR_API_KEY }}"}}}}'
             --allowedTools "mcp__linear__get_issue,mcp__linear__list_comments,mcp__github__create_pull_request,Read,Edit,Write,Glob,Grep,Bash(git checkout -b:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git mv:*),Bash(git rm:*),Bash(git commit:*),Bash(git push:*),Bash(bundle exec rspec:*),Bash(bin/rails docs:lint:*),Bash(bin/rails -T:*)"
 
       # Pełny log Claude jest ukryty (publiczne repo). W podsumowaniu przebiegu tylko:
       # stan serwerów MCP, wywołane narzędzia (bez argumentów i wyników), odrzucone wywołania
-      # (nazwa + początek polecenia) i końcowy komunikat.
+      # (nazwa + początek polecenia) i końcowy komunikat. Bez udanego mcp__github__create_pull_request
+      # krok kończy się błędem, żeby przebieg bez efektu nie był zielony (BRO-45).
       - name: Summary
         if: always() && steps.claude.outputs.execution_file != ''
         env:
@@ -110,3 +114,10 @@ jobs:
             echo "### Wynik"
             jq -r '.[] | select(.type == "result") | .result // "(brak)"' "$EXECUTION_FILE"
           } | tee -a "$GITHUB_STEP_SUMMARY"
+
+          if ! jq -e '([.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use" and .name == "mcp__github__create_pull_request") | .id]) as $ids
+            | any(.[] | select(.type == "user") | .message.content[]? | select(type == "object" and .type == "tool_result"); (.tool_use_id as $t | $ids | index($t)) != null and .is_error != true)' "$EXECUTION_FILE" > /dev/null; then
+            echo "### Brak PR" >> "$GITHUB_STEP_SUMMARY"
+            echo "::error::Agent nie otworzył PR — zobacz sekcję „Wynik” w podsumowaniu."
+            exit 1
+          fi
