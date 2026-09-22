@@ -102,11 +102,26 @@ Powinno zwrócić `200`.
 
 ### 3. Zapytanie do API
 
+`POST /api/ask` przyjmuje `{"question": "..."}` i zwraca JSON z wyszukaną dokumentacją oraz
+odpowiedzią Gemini (jeśli włączona):
+
 ```bash
 curl -s -X POST http://localhost:3001/api/ask \
   -H 'Content-Type: application/json' \
   -d '{"question":"..."}'
 ```
+
+Pola odpowiedzi:
+
+* `status` — `ok`, `not_in_docs`, `no_results`, `disabled`, `rate_limited` albo `error`.
+* `answer` — odpowiedź Gemini w Markdown albo `null`.
+* `finish_reason` — powód zakończenia generowania (`STOP`, `MAX_TOKENS`, ...) albo `null`.
+* `sources` — dopasowane sekcje dokumentacji (obecne też przy `disabled` i `rate_limited`).
+* `suggestions` — tytuły najbliższych instrukcji, tylko przy `no_results`.
+
+Kody HTTP: `200` dla `ok`/`not_in_docs`/`no_results`/`disabled`, `429` dla `rate_limited`,
+`503` dla `error` oraz niedostępności Redis/Ollama, `400` dla pustego lub brakującego
+`question`.
 
 ### 4. Lokalna aplikacja z czatem
 
