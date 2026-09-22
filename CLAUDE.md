@@ -3,7 +3,7 @@
 ## Komendy
 
 - testy: `bundle exec rspec`
-- lint dokumentacji: `bin/rails docs:lint` (gdy zadanie zostanie przeniesione z `rag-package/`)
+- lint dokumentacji: `bin/rails docs:lint`
 
 ## Przepływ pracy
 
@@ -18,7 +18,7 @@
 ## Kontekst projektu
 
 - Rails 8.1, RSpec, Redis (Query Engine), Ollama (`bge-m3`), Gemini (opcjonalnie).
-- Kod bazowy RAG i jego README: `rag-package/`.
+- Kod RAG: `app/lib/rag.rb`, `app/lib/rag/`, `app/lib/docs_lint.rb`, `lib/tasks/rag.rake`, `lib/tasks/docs.rake`.
 - Aplikacja jest **wyłącznie API** (`rails new --api`): bez widoków, helperów i JavaScriptu;
   odpowiedzi tylko JSON; główny endpoint `POST /api/ask`.
 - Repozytorium jest **publiczne**: żadnych kluczy, tokenów, haseł ani adresów serwera
