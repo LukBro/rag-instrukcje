@@ -67,6 +67,12 @@ jobs:
             2. Stosuj zasady z CLAUDE.md.
             3. Utwórz gałąź: `git checkout -b <numer małymi literami>-<krótki-opis>` (kebab-case, bez polskich znaków), np. `bro-41-readme-automatyzacja`.
             4. Wprowadź zmiany. Pliki przenoś `git mv`, usuwaj `git rm` (zachowuje historię i oszczędza tury). Uruchom `bundle exec rspec` i napraw błędy.
+               Uprawnienia (każde odrzucone wywołanie zjada turę):
+               - z poleceń, które coś zmieniają albo uruchamiają kod, dozwolone są tylko: `git checkout -b/add/mv/rm/commit/push`, `bundle exec rspec`, `bin/rails docs:lint`, `bin/rails -T`,
+               - nie próbuj `bundle install/update/check`, `gem`, `ruby`, `python`, `bin/rails runner/console`, `mkdir`, `cp`, zapisu do `/tmp` — zostaną odrzucone; pliki i katalogi twórz narzędziem `Write`,
+               - pliki spoza repozytorium (np. źródła gemów) czytaj narzędziami `Read`, `Glob`, `Grep`, nie przez `sed`/`cat`/`find`,
+               - jeśli blokuje cię zależność albo środowisko (gem, wersja, konfiguracja), nie obchodź tego: zrób commit i push tego, co działa, otwórz PR i opisz blokadę z dokładnym komunikatem błędu.
+               Wczesny push: gdy tylko `bundle exec rspec` po raz pierwszy przechodzi z nowymi zmianami, zrób commit i `git push -u origin <gałąź>`; kolejne poprawki jako następne commity. Przekroczenie limitu tur nie może skasować pracy.
             5. `git add` zmienionych plików, `git commit -m "${{ inputs.ticket }}: <opis>"`, `git push -u origin <gałąź>`.
             6. Otwórz PR narzędziem mcp__github__create_pull_request (owner: ${{ github.repository_owner }}, repo: ${{ github.event.repository.name }}, base: main):
                - tytuł: `${{ inputs.ticket }}: <tytuł zgłoszenia>`,
@@ -75,13 +81,17 @@ jobs:
                - bez stopki „Generated with Claude Code”.
           # Linear MCP musi być inline JSON: akcja scala --mcp-config tylko w tej postaci,
           # ścieżkę do pliku pomija, gdy dodaje własne serwery. Klucz z sekretu (maskowany w logach).
+          # --max-turns to bezpiecznik przed zapętleniem, nie budżet pracy: BRO-14 lokalnie 93 tury,
+          # zgłoszenia w podobnych projektach 230–330 wywołań. Czas i koszt ogranicza timeout-minutes
+          # (~80 tur ≈ 8 min), a wczesny push chroni pracę przy przekroczeniu (BRO-43).
           claude_args: |
-            --max-turns 80
+            --max-turns 250
             --mcp-config '{"mcpServers":{"linear":{"type":"http","url":"https://mcp.linear.app/mcp","headers":{"Authorization":"Bearer ${{ secrets.LINEAR_API_KEY }}"}}}}'
-            --allowedTools "mcp__linear__get_issue,mcp__linear__list_comments,mcp__github__create_pull_request,Read,Edit,Write,Glob,Grep,Bash(git checkout -b:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git mv:*),Bash(git rm:*),Bash(git commit:*),Bash(git push:*),Bash(bundle exec rspec:*),Bash(bin/rails -T:*)"
+            --allowedTools "mcp__linear__get_issue,mcp__linear__list_comments,mcp__github__create_pull_request,Read,Edit,Write,Glob,Grep,Bash(git checkout -b:*),Bash(git status:*),Bash(git diff:*),Bash(git log:*),Bash(git add:*),Bash(git mv:*),Bash(git rm:*),Bash(git commit:*),Bash(git push:*),Bash(bundle exec rspec:*),Bash(bin/rails docs:lint:*),Bash(bin/rails -T:*)"
 
       # Pełny log Claude jest ukryty (publiczne repo). W podsumowaniu przebiegu tylko:
-      # stan serwerów MCP, wywołane narzędzia (bez argumentów i wyników) i końcowy komunikat.
+      # stan serwerów MCP, wywołane narzędzia (bez argumentów i wyników), odrzucone wywołania
+      # (nazwa + początek polecenia) i końcowy komunikat.
       - name: Summary
         if: always() && steps.claude.outputs.execution_file != ''
         env:
@@ -93,6 +103,8 @@ jobs:
             jq -r '.[] | select(.type == "system" and .subtype == "init") | .mcp_servers[]? | "- \(.name): \(.status)"' "$EXECUTION_FILE"
             echo "### Wywołane narzędzia"
             jq -r '[.[] | select(.type == "assistant") | .message.content[]? | select(.type == "tool_use") | .name] | group_by(.) | .[] | "- \(.[0]) ×\(length)"' "$EXECUTION_FILE"
+            echo "### Odrzucone narzędzia"
+            jq -r '.[] | select(.type == "result") | (.permission_denials // []) as $d | if ($d | length) == 0 then "- (brak)" else $d[] | "- \(.tool_name)" + (if (.tool_input.command? | type) == "string" then ": \(.tool_input.command | gsub("\\s+"; " ") | .[0:60])" else "" end) end' "$EXECUTION_FILE"
             echo "### Przebieg"
             jq -r '.[] | select(.type == "result") | "- status: \(.subtype), tury: \(.num_turns), czas: \((.duration_ms // 0) / 1000 | floor) s"' "$EXECUTION_FILE"
             echo "### Wynik"
