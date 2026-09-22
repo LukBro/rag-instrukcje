@@ -19,3 +19,7 @@ end
 gem "rspec-rails", "~> 8.0", groups: [:development, :test]
 
 gem "redis", "~> 5.0"
+
+# json 3.x makes JSON.parse keyword-only; ActiveSupport 8.1 passes options positionally,
+# so every JSON request body fails to parse (BRO-44). Lift once Rails supports json 3.
+gem "json", "~> 2.21"
