@@ -122,7 +122,16 @@ export RAG_GEMINI_API_KEY="..."            # opcjonalnie; bez klucza API zwraca 
 # export RAG_REDIS_URL="redis://localhost:6380/0"   # domyślna wartość
 # export OLLAMA_URL="http://localhost:11434"        # domyślna wartość
 # export RAG_MAX_DISTANCE="0.45"                    # domyślna wartość
+# export RAG_GEMINI_MODEL="gemini-3.5-flash-lite"   # domyślna wartość
+# export RAG_GEMINI_THINKING_LEVEL="low"            # domyślna wartość; pusta = ustawienie modelu
+# export RAG_GEMINI_TIMEOUT="90"                    # domyślna wartość (sekundy)
 ```
+
+Po zmianie `~/.bashrc` uruchom serwer w nowej sesji SSH albo po `source ~/.bashrc` —
+proces serwera nie widzi zmiennych dopisanych po starcie powłoki.
+
+Limity darmowego tieru dla `gemini-3.5-flash-lite` (AI Studio, BRO-27): 15 zapytań na minutę,
+500 dziennie. Odpowiedź trwa zwykle 30–60 s; wyszukiwanie ok. 0,1 s.
 
 `RAG_MAX_DISTANCE` to próg dystansu: instrukcje dalsze niż próg nie są zwracane. Wartość
 0.45 wynika z `rag:eval` (BRO-26). Dystanse pytań w zakresie i spoza zakresu dokumentacji
