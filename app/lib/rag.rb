@@ -7,7 +7,8 @@ require "redis"
 module Rag
   def self.redis
     # Redis z modułem wyszukiwania (Redis 8+ lub Redis Stack), baza 0.
-    @redis ||= Redis.new(url: ENV.fetch("RAG_REDIS_URL", "redis://localhost:6379/0"))
+    # Domyślnie osobna instancja rag-redis (6380); 6379 na serwerze należy do innego projektu.
+    @redis ||= Redis.new(url: ENV.fetch("RAG_REDIS_URL", "redis://localhost:6380/0"))
   end
 
   def self.ollama
