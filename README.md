@@ -121,7 +121,20 @@ Aplikacja czyta konfigurację ze zmiennych środowiskowych (bez pliku `.env`). D
 export RAG_GEMINI_API_KEY="..."            # opcjonalnie; bez klucza API zwraca tylko źródła
 # export RAG_REDIS_URL="redis://localhost:6380/0"   # domyślna wartość
 # export OLLAMA_URL="http://localhost:11434"        # domyślna wartość
+# export RAG_MAX_DISTANCE="0.45"                    # domyślna wartość
 ```
+
+`RAG_MAX_DISTANCE` to próg dystansu: instrukcje dalsze niż próg nie są zwracane. Wartość
+0.45 wynika z `rag:eval` (BRO-26). Dystanse pytań w zakresie i spoza zakresu dokumentacji
+się nakładają, więc żaden próg nie rozdziela ich bez błędów:
+
+| Próg | Odrzucone pytania spoza zakresu | Utracone pytania w zakresie |
+| -- | -- | -- |
+| 0.50 | 2/8 | 0/50 |
+| 0.45 | 6/8 | 5/50 |
+| 0.40 | 7/8 | 11/50 |
+
+Po zmianie instrukcji lub progu uruchom ponownie `bin/rails rag:eval`.
 
 Fragmenty instrukcji i pytania trafiają do Gemini. Na darmowym tierze Google może
 wykorzystywać te dane do ulepszania modeli.

@@ -3,8 +3,9 @@
 module Rag
   # Wyszukiwanie instrukcji bez LLM: pytanie -> najlepsze sekcje z różnych plików.
   class Search
-    # PLACEHOLDER - skalibruj przez rake rag:eval (pytania spoza zakresu z expected_sources: []).
-    MAX_DISTANCE = Float(ENV.fetch("RAG_MAX_DISTANCE", "0.5"))
+    # Skalibrowane przez rake rag:eval (BRO-26): zakresy dystansów pytań w zakresie i spoza
+    # zakresu się nakładają; 0.45 odrzuca większość pytań spoza zakresu kosztem części trafnych.
+    MAX_DISTANCE = Float(ENV.fetch("RAG_MAX_DISTANCE", "0.45"))
     # Liczba fragmentów pobieranych z Redis przed wyborem najlepszej sekcji z każdego pliku.
     CANDIDATES = Integer(ENV.fetch("RAG_CANDIDATES", "10"))
     RESULTS = Integer(ENV.fetch("RAG_RESULTS", "3"))
