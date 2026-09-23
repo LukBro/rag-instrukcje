@@ -77,6 +77,67 @@ gitleaks git --redact --verbose .
 3. Nie polegaj na przepisaniu historii — publiczne repozytorium mogło zostać już skopiowane.
    Wypchnięty sekret traktuj jako skompromitowany, nawet jeśli commit został usunięty.
 
+## Uruchomienie w development na serwerze
+
+Aplikacja działa w trybie development i nasłuchuje tylko na `localhost`. Wszystkie usługi
+(Redis, Ollama, Rails) są dostępne wyłącznie lokalnie na serwerze.
+
+### 1. Usługi (jednorazowo)
+
+Redis z modułem wyszukiwania, osobny dla RAG, tylko na `127.0.0.1:6380`:
+
+```bash
+docker run -d --name rag-redis --restart unless-stopped \
+  -p 127.0.0.1:6380:6379 -v rag-redis-data:/data \
+  redis:8 redis-server --maxmemory-policy noeviction
+```
+
+Ollama z modelem embeddingów (nasłuchuje na `127.0.0.1:11434`):
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+sudo systemctl enable --now ollama   # instalator pomija ten krok, gdy systemd nie jest w stanie "running"
+ollama pull bge-m3
+```
+
+### 2. Kod i zależności
+
+```bash
+git clone <adres-repozytorium>
+cd rag-instrukcje
+bundle install
+```
+
+Instrukcje użytkownika (`docs/user/*.md`) i zbiór ewaluacyjny (`spec/rag/golden.yml`) są
+poufne i nie ma ich w repozytorium (`.gitignore`). Skopiuj je na serwer osobno, np. `scp`.
+Wzór zbioru: `spec/rag/golden.example.yml`.
+
+### 3. Zmienne środowiskowe
+
+Aplikacja czyta konfigurację ze zmiennych środowiskowych (bez pliku `.env`). Dopisz je do
+`~/.bashrc` na serwerze i nigdy nie commituj wartości:
+
+```bash
+export RAG_GEMINI_API_KEY="..."            # opcjonalnie; bez klucza API zwraca tylko źródła
+# export RAG_REDIS_URL="redis://localhost:6380/0"   # domyślna wartość
+# export OLLAMA_URL="http://localhost:11434"        # domyślna wartość
+```
+
+Fragmenty instrukcji i pytania trafiają do Gemini. Na darmowym tierze Google może
+wykorzystywać te dane do ulepszania modeli.
+
+### 4. Indeks i serwer
+
+```bash
+bin/rails rag:doctor   # Redis, wymiar embeddingu 1024, Gemini
+bin/rails rag:index    # indeksuje zmienione pliki docs/user/
+bin/rails rag:eval     # Recall@3 i MRR na spec/rag/golden.yml
+bin/rails server       # port 3000, tylko localhost
+```
+
+Serwer działa, dopóki otwarta jest sesja terminala; do pracy w tle użyj np. `tmux`.
+Dostęp z własnego komputera: sekcja „Dostęp do API”.
+
 ## Dostęp do API
 
 Aplikacja na serwerze to wyłącznie API (bez widoków). Działa w trybie development i
@@ -89,7 +150,7 @@ Na swoim komputerze otwórz tunel SSH mapujący lokalny port `3001` na port `300
 serwerze (port `3001`, bo `3000` zwykle zajmuje lokalna aplikacja Rails):
 
 ```bash
-ssh -N -L 3001:localhost:3000 ubuntu@<serwer>
+ssh -N -L 3001:localhost:3000 <użytkownik>@<serwer>
 ```
 
 ### 2. Sprawdzenie tunelu
