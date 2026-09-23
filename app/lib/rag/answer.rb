@@ -4,9 +4,12 @@ module Rag
   # Odpowiedź Gemini na podstawie wyników Rag::Search. Wyszukiwarka działa niezależnie:
   # brak klucza, limit zapytań lub błąd API nie wpływają na wyniki wyszukiwania.
   class Answer
-    MODEL = ENV.fetch("RAG_GEMINI_MODEL", "gemini-3.1-flash-lite")
+    # Pomiar w BRO-27: gemini-3.1-flash-lite zwracał 503 (przeciążenie), a przy domyślnym
+    # poziomie myślenia model odrzucał trafne fragmenty; "low" dał poprawne i szybsze odpowiedzi.
+    MODEL = ENV.fetch("RAG_GEMINI_MODEL", "gemini-3.5-flash-lite")
     MAX_OUTPUT_TOKENS = Integer(ENV.fetch("RAG_GEMINI_MAX_OUTPUT_TOKENS", "2048"))
-    THINKING_LEVEL = ENV["RAG_GEMINI_THINKING_LEVEL"].to_s.strip.then { |v| v.empty? ? nil : v }
+    # Pusta wartość RAG_GEMINI_THINKING_LEVEL = ustawienie domyślne modelu.
+    THINKING_LEVEL = ENV.fetch("RAG_GEMINI_THINKING_LEVEL", "low").strip.then { |v| v.empty? ? nil : v }
 
     NO_ANSWER = "Nie znalazłem odpowiedzi w dokumentacji."
 
@@ -41,7 +44,8 @@ module Rag
       GeminiClient.new(
         api_key: api_key,
         base_url: ENV.fetch("RAG_GEMINI_BASE_URL", GeminiClient::BASE_URL),
-        read_timeout: Integer(ENV.fetch("RAG_GEMINI_TIMEOUT", "60"))
+        # Darmowy tier odpowiadał w 30-57 s.
+        read_timeout: Integer(ENV.fetch("RAG_GEMINI_TIMEOUT", "90"))
       )
     end
 
