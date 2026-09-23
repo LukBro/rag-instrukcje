@@ -154,8 +154,12 @@ wykorzystywać te dane do ulepszania modeli.
 bin/rails rag:doctor   # Redis, wymiar embeddingu 1024, Gemini
 bin/rails rag:index    # indeksuje zmienione pliki docs/user/
 bin/rails rag:eval     # Recall@3 i MRR na spec/rag/golden.yml
-bin/rails server       # port 3000, tylko localhost
+bin/rails server       # port 3002, tylko localhost (inny port: PORT=... bin/rails server)
 ```
+
+Domyślny port to 3002, bo na serwerze deweloperskim 3000 zajmuje inna aplikacja Rails,
+a 3001 kolejny projekt. Nie ustawiaj `PORT` w `~/.bashrc` — z tej samej powłoki startują
+inne aplikacje.
 
 Serwer działa, dopóki otwarta jest sesja terminala; do pracy w tle użyj np. `tmux`.
 Dostęp z własnego komputera: sekcja „Dostęp do API”.
@@ -168,11 +172,11 @@ uzyskuje się przez tunel SSH.
 
 ### 1. Otwarcie tunelu
 
-Na swoim komputerze otwórz tunel SSH mapujący lokalny port `3001` na port `3000` na
-serwerze (port `3001`, bo `3000` zwykle zajmuje lokalna aplikacja Rails):
+Na swoim komputerze otwórz tunel SSH mapujący lokalny port `3001` na port `3002` na
+serwerze (lokalnie `3001`, bo `3000` zwykle zajmuje lokalna aplikacja Rails):
 
 ```bash
-ssh -N -L 3001:localhost:3000 <użytkownik>@<serwer>
+ssh -N -L 3001:localhost:3002 <użytkownik>@<serwer>
 ```
 
 ### 2. Sprawdzenie tunelu
@@ -208,8 +212,9 @@ Kody HTTP: `200` dla `ok`/`not_in_docs`/`no_results`/`disabled`, `429` dla `rate
 
 ### 4. Lokalna aplikacja z czatem
 
-Lokalna aplikacja z czatem (BRO-40) korzysta z adresu `http://localhost:3001` — tunel
-musi być w tym czasie otwarty.
+Aplikacja z czatem (BRO-40) działająca na tym samym serwerze łączy się z API bezpośrednio
+pod `http://localhost:3002`, bez tunelu. Aplikacja na własnym komputerze korzysta z
+`http://localhost:3001` — tunel musi być w tym czasie otwarty.
 
 ### 5. Zamknięcie tunelu
 
