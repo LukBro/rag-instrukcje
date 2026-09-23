@@ -24,3 +24,8 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# Instrukcje użytkownika i zbiór ewaluacyjny są poufne - tylko na serwerze, poza repozytorium.
+/docs/user/*
+!/docs/user/_szablon.md
+/spec/rag/golden.yml
+
