@@ -160,12 +160,9 @@ namespace :rag do
       bucket = history.empty? ? :single : :chat
       question = c["question"]
 
-      # Ta sama kolejność co w Rag::Ask: dopiero brak wyników uruchamia przepisanie pytania.
-      if bucket == :chat && !Rag::Search.call(question).found?
-        rewritten = Rag::QuestionRewriter.call(question, history: history, env: Rails.env,
-                                                         logger: Logger.new($stdout))
-        question = rewritten if rewritten
-      end
+      # Ta sama ścieżka co w API: Rag::Ask decyduje, czy pytanie wymaga przepisania.
+      rewritten = Rag::Ask.resolve_question(question, history: history, env: Rails.env)
+      question = rewritten if rewritten
 
       ranked = Rag::Retriever.call(question, k: candidates).uniq { |r| r[:source] }
       top = ranked.first

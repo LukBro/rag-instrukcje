@@ -8,10 +8,11 @@ module Rag
     MODEL = ENV.fetch("RAG_GEMINI_REWRITE_MODEL", Answer::MODEL)
     # Wynikiem jest jedno zdanie; 64 tokeny wystarczają i ograniczają czas odpowiedzi.
     MAX_OUTPUT_TOKENS = Integer(ENV.fetch("RAG_GEMINI_REWRITE_MAX_OUTPUT_TOKENS", "64"))
-    # Krótszy timeout i jedno ponowienie (Answer ma 90 s i dwa): wywołanie na kilkadziesiąt
-    # tokenów albo odpowiada szybko, albo nie warto na nie czekać.
-    TIMEOUT = Integer(ENV.fetch("RAG_GEMINI_REWRITE_TIMEOUT", "15"))
-    MAX_RETRIES = 1
+    # Krótki timeout i zero ponowień (Answer ma 90 s i dwa): to ulepszenie, które w razie
+    # niepowodzenia degraduje się do zachowania sprzed BRO-72, więc czekanie nic nie daje.
+    # Zmierzony ogon Gemini sięgał 161 s, a samo przepisanie potrafiło zająć 25 s.
+    TIMEOUT = Integer(ENV.fetch("RAG_GEMINI_REWRITE_TIMEOUT", "10"))
+    MAX_RETRIES = 0
     # Ile ostatnich pytań i ile znaków każde trafia do modelu.
     MAX_HISTORY = Integer(ENV.fetch("RAG_HISTORY_TURNS", "5"))
     MAX_QUESTION_CHARS = Integer(ENV.fetch("RAG_HISTORY_QUESTION_CHARS", "500"))

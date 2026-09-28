@@ -211,10 +211,11 @@ curl -s -X POST http://localhost:3001/api/ask \
   -d '{"question":"a jak to usunąć?","history":["jak dodać adres dostawy klienta?"]}'
 ```
 
-Przepisanie pytania na samodzielne uruchamia się **tylko wtedy**, gdy wyszukiwanie nic nie
-znalazło, więc typowa tura nie kosztuje dodatkowego wywołania modelu. Brak `history` = zachowanie
-jak przed tą zmianą. Liczą się 5 ostatnich pytań, po 500 znaków; nadwyżka jest obcinana.
-Przy wyłączonym Gemini przepisywanie nie działa i odpowiedź jest taka jak dotąd.
+Gdy `history` jest niepuste, pytanie jest najpierw przepisywane na samodzielne — decyzję, czy to
+w ogóle potrzebne, podejmuje model (pytanie samodzielne zostaje bez zmian). Brak `history` =
+zachowanie jak przed tą zmianą, bez żadnego dodatkowego wywołania. Liczą się 5 ostatnich pytań,
+po 500 znaków; nadwyżka jest obcinana. Przy wyłączonym Gemini, błędzie albo przekroczeniu
+10-sekundowego timeoutu wyszukiwanie idzie po pytaniu oryginalnym, czyli jak dotąd.
 
 Pola odpowiedzi:
 
