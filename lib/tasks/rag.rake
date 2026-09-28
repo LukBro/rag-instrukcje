@@ -69,8 +69,6 @@ namespace :rag do
     puts "Status: #{answer.status}"
     puts answer.text if answer.text
     answer.sources.each_with_index { |s, i| puts format("[%d] %.4f %s (%s)", i + 1, s[:distance], s[:heading], s[:source]) }
-    issues = Rag::Answer.citation_issues(answer.text, answer.sources.size) if answer.text
-    puts "Uwagi: #{issues.join('; ')}" if issues&.any?
     puts format("Czas: wyszukiwanie %.2f s, razem %.2f s | finish_reason=%s | usage=%s",
                 search_time, total_time, answer.finish_reason, answer.usage)
   end
@@ -100,11 +98,7 @@ namespace :rag do
         out.puts "- Oczekiwane źródła: #{Array(c['expected_sources']).join(', ').then { |v| v.empty? ? '(spoza zakresu)' : v }}"
         out.puts "- Status: #{answer.status}, finish_reason: #{answer.finish_reason}"
         answer.sources.each_with_index { |s, n| out.puts "- [#{n + 1}] #{s[:source]} (#{s[:heading]})" }
-        if answer.text
-          issues = Rag::Answer.citation_issues(answer.text, answer.sources.size)
-          out.puts "- Automatyczne uwagi: #{issues.empty? ? 'brak' : issues.join('; ')}"
-          out.puts "\n#{answer.text}\n"
-        end
+        out.puts "\n#{answer.text}\n" if answer.text
         out.puts "\nOcena: ____\n"
         puts "#{i + 1}/#{cases.size} #{answer.status}"
 
