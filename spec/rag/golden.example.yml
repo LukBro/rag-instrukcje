@@ -1,7 +1,10 @@
 # Zbiór ewaluacyjny (rake rag:eval).
 # question: pytanie tak, jak zada je użytkownik - nie kopiuj tytułu instrukcji.
 # expected_sources: pliki z odpowiedzią. Pusta lista = pytanie spoza dokumentacji (kalibracja progu).
-# Uwzględnij: pytania potoczne, ogólne, złożone (dwa pliki), tak/nie, z literówkami, spoza zakresu.
+# history: poprzednie pytania użytkownika (opcjonalne). Obecność history = rozmowa wielotury;
+#   takie przypadki rag:eval liczy osobno, bo przechodzą przez przepisanie pytania (wymaga Gemini).
+# Uwzględnij: pytania potoczne, ogólne, złożone (dwa pliki), tak/nie, z literówkami, spoza zakresu,
+#   oraz kilka pytań doprecyzowujących ("a jak to usunąć?") z wypełnionym history.
 - question: "<pytanie potoczne>"
   expected_sources:
     - docs/user/<plik>.md
@@ -11,3 +14,8 @@
     - docs/user/<plik2>.md
 - question: "<pytanie spoza zakresu dokumentacji>"
   expected_sources: []
+- question: "a jak to usunąć?"
+  history:
+    - "<poprzednie pytanie, które ustala temat>"
+  expected_sources:
+    - docs/user/<plik>.md

@@ -118,6 +118,50 @@ RSpec.describe "POST /api/ask", type: :request do
     expect(response.parsed_body["status"]).to eq("error")
   end
 
+  it "przekazuje history do Rag::Ask i zwraca odpowiedź na przepisane pytanie" do
+    allow(Rag::Search).to receive(:call).with("a jak to usunąć?").and_return(search_result(found: false))
+    allow(Rag::Search).to receive(:call).with("Jak usunąć adres dostawy klienta?").and_return(search_result)
+    allow(Rag::QuestionRewriter).to receive(:call).and_return("Jak usunąć adres dostawy klienta?")
+    stub_answer(:ok, text: "Odpowiedź", finish_reason: "STOP")
+
+    post "/api/ask", params: { question: "a jak to usunąć?", history: ["jak dodać adres dostawy?"] }, as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body["status"]).to eq("ok")
+    expect(Rag::QuestionRewriter).to have_received(:call).with(
+      "a jak to usunąć?", hash_including(history: ["jak dodać adres dostawy?"])
+    )
+  end
+
+  it "bez history nie próbuje przepisywać pytania" do
+    allow(Rag::Search).to receive(:call).and_return(search_result(found: false))
+    allow(Rag::QuestionRewriter).to receive(:call)
+    stub_answer(:no_results, sources: [])
+
+    post "/api/ask", params: { question: "zupełnie nie z tej dokumentacji" }, as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(response.parsed_body["status"]).to eq("no_results")
+    expect(response.parsed_body["suggestions"].size).to eq(1)
+    expect(Rag::QuestionRewriter).not_to have_received(:call)
+  end
+
+  it "obcina zbyt długą history zamiast zwracać błąd" do
+    allow(Rag::Search).to receive(:call).and_return(search_result(found: false))
+    allow(Rag::QuestionRewriter).to receive(:call).and_return(nil)
+
+    post "/api/ask",
+         params: { question: "a jak to?", history: (1..8).map { |i| "pytanie #{i}" } + ["x" * 900] },
+         as: :json
+
+    expect(response).to have_http_status(:ok)
+    expect(Rag::QuestionRewriter).to have_received(:call) do |_question, history:, **|
+      expect(history.size).to eq(Rag::QuestionRewriter::MAX_HISTORY)
+      expect(history.first).to eq("pytanie 5")
+      expect(history.last.length).to eq(Rag::QuestionRewriter::MAX_QUESTION_CHARS)
+    end
+  end
+
   it "zwraca 503 gdy Ollama zgłasza błąd" do
     allow(Rag::Search).to receive(:call).and_raise(Rag::OllamaClient::Error, "timeout")
 

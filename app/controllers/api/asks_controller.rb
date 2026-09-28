@@ -15,10 +15,10 @@ module Api
       question = params[:question]
       return render json: { error: "question jest wymagane" }, status: :bad_request if question.blank?
 
-      search_result = Rag::Search.call(question)
-      result = Rag::Answer.call(question, env: Rails.env, search_result: search_result, logger: Rails.logger)
+      # history: poprzednie pytania użytkownika; puste = zachowanie sprzed BRO-72.
+      ask = Rag::Ask.call(question, history: params[:history], env: Rails.env, logger: Rails.logger)
 
-      render json: ask_response(result, search_result), status: STATUS_HTTP.fetch(result.status)
+      render json: ask_response(ask.answer, ask.search_result), status: STATUS_HTTP.fetch(ask.answer.status)
     rescue Rag::OllamaClient::Error, Redis::BaseError => e
       Rails.logger.error("[api/ask] #{e.class}: #{e.message}")
       render json: ask_response(Rag::Answer::Result.new(status: :error, sources: []), nil), status: :service_unavailable
