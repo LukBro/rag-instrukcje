@@ -161,7 +161,13 @@ namespace :rag do
       question = c["question"]
 
       # Ta sama ścieżka co w API: Rag::Ask decyduje, czy pytanie wymaga przepisania.
-      rewritten = Rag::Ask.resolve_question(question, history: history, env: Rails.env)
+      # Logger obowiązkowy: bez niego nieudane przepisanie (503, timeout) przechodzi niezauważone
+      # i wynik rozmów wygląda jak pomiar funkcji, a jest pomiarem pytań surowych.
+      rewritten = Rag::Ask.resolve_question(question, history: history, env: Rails.env,
+                                                      logger: Logger.new($stdout))
+      if bucket == :chat && rewritten.nil?
+        puts "UWAGA: #{question.inspect} - brak przepisania, wynik dotyczy pytania surowego"
+      end
       question = rewritten if rewritten
 
       ranked = Rag::Retriever.call(question, k: candidates).uniq { |r| r[:source] }
