@@ -70,6 +70,18 @@ RSpec.describe Rag::Conversation do
     expect(converse(FakeGemini.new(error: Rag::GeminiClient::RateLimited.new("429")))).to be_nil
   end
 
+  it "zwraca nil, gdy katalogu nie da się pobrać z Redisa" do
+    allow(Rag::Catalog).to receive(:call).and_raise(Redis::BaseError, "connection refused")
+    gem = FakeGemini.new(response: ok_response('{"reply": "x", "topics": []}'))
+
+    result = with_env("RAG_GEMINI_API_KEY" => "k") do
+      described_class.call("siemanko", history: [], env: "development", catalog: nil, client: gem)
+    end
+
+    expect(result).to be_nil
+    expect(gem.calls).to be_empty
+  end
+
   it "nie woła API przy wyłączonym Gemini ani pustej wiadomości" do
     gem = FakeGemini.new(response: ok_response('{"reply": "x", "topics": []}'))
 

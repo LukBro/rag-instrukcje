@@ -101,7 +101,8 @@ i kody HTTP bez zmian. Klient, który przy `no_results` ignoruje `answer`, dzia�
 | błąd, limit 429, timeout rozmówcy | j.w., ostrzeżenie w logu |
 | odpowiedź nie jest JSON-em lub `reply` pusty | j.w., ostrzeżenie w logu |
 | numery tematów spoza listy | pomijane; pozostałe tematy zostają |
-| Redis/Ollama niedostępne | bez zmian: 503 z kontrolera |
+| błąd Redisa przy pobieraniu katalogu (po udanym wyszukiwaniu) | `answer: null`, 3 najbliższe tematy — jak dziś, ostrzeżenie w logu |
+| Redis/Ollama niedostępne przy wyszukiwaniu | bez zmian: 503 z kontrolera |
 
 ## Testy i weryfikacja
 

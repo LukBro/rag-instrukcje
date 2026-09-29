@@ -64,8 +64,10 @@ module Rag
         response_schema: RESPONSE_SCHEMA
       )
       parse(response.text, catalog, nearest, logger)
-    rescue GeminiClient::Error => e
-      logger&.warn("[rag] rozmówca nieudany: #{e.message}")
+    # Redis: katalog to jedyne zapytanie po Search na tej ścieżce - jego błąd nie może zamienić
+    # łagodnego no_results w 503.
+    rescue GeminiClient::Error, Redis::BaseError => e
+      logger&.warn("[rag] rozmówca nieudany: #{e.class}: #{e.message}")
       nil
     end
 
