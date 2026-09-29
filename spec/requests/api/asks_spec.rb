@@ -20,6 +20,9 @@ RSpec.describe "POST /api/ask", type: :request do
 
   before do
     allow(Rag::Search).to receive(:call).and_return(search_result)
+    # Klucz Gemini bywa w środowisku powłoki: bez tej podmiany ścieżka no_results wołałaby
+    # prawdziwe Gemini i Redis (BRO-73).
+    allow(Rag::Conversation).to receive(:call).and_return(nil)
   end
 
   it "zwraca 200 i odpowiedź dla statusu ok" do
@@ -59,6 +62,22 @@ RSpec.describe "POST /api/ask", type: :request do
     expect(body["status"]).to eq("no_results")
     expect(body["sources"]).to eq([])
     expect(body["suggestions"]).to eq([{ "source" => "docs/user/b.md", "title" => "B", "distance" => 0.8 }])
+  end
+
+  it "zwraca odpowiedź rozmówcy i jego tematy dla no_results" do
+    allow(Rag::Search).to receive(:call).and_return(search_result(found: false))
+    allow(Rag::Conversation).to receive(:call).and_return(
+      Rag::Conversation::Result.new(text: "Cześć! O co chcesz zapytać?",
+                                    suggestions: [{ source: "docs/user/c.md", title: "C", distance: nil }])
+    )
+
+    post "/api/ask", params: { question: "siemanko" }, as: :json
+
+    expect(response).to have_http_status(:ok)
+    body = response.parsed_body
+    expect(body["status"]).to eq("no_results")
+    expect(body["answer"]).to eq("Cześć! O co chcesz zapytać?")
+    expect(body["suggestions"]).to eq([{ "source" => "docs/user/c.md", "title" => "C", "distance" => nil }])
   end
 
   it "zwraca 200 i sources dla disabled" do

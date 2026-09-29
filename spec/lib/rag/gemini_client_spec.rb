@@ -37,6 +37,21 @@ RSpec.describe Rag::GeminiClient do
                    .generate(model: "m", system_instruction: "s", user_text: "u", max_output_tokens: 10)
     server.join
     expect(server.requests.first[:body]["generationConfig"]).not_to have_key("thinkingConfig")
+    expect(server.requests.first[:body]["generationConfig"]).not_to have_key("responseMimeType")
+  ensure
+    server&.close
+  end
+
+  it "wymusza JSON, gdy podano response_schema" do
+    server = FakeHttpServer.new([["200 OK", OK_BODY]])
+    schema = { type: "OBJECT", properties: { reply: { type: "STRING" } } }
+    described_class.new(api_key: "k", base_url: server.url)
+                   .generate(model: "m", system_instruction: "s", user_text: "u", max_output_tokens: 10,
+                             response_schema: schema)
+    server.join
+    config = server.requests.first[:body]["generationConfig"]
+    expect(config["responseMimeType"]).to eq("application/json")
+    expect(config["responseSchema"]).to eq("type" => "OBJECT", "properties" => { "reply" => { "type" => "STRING" } })
   ensure
     server&.close
   end

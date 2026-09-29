@@ -125,7 +125,8 @@ export RAG_GEMINI_API_KEY="..."            # opcjonalnie; bez klucza API zwraca 
 # export RAG_GEMINI_MODEL="gemini-3.5-flash-lite"   # domyślna wartość
 # export RAG_GEMINI_THINKING_LEVEL="low"            # domyślna wartość; pusta = ustawienie modelu
 # export RAG_GEMINI_TIMEOUT="90"                    # domyślna wartość (sekundy)
-# export RAG_GEMINI_REWRITE_TIMEOUT="15"            # domyślna wartość; przepisanie pytania
+# export RAG_GEMINI_REWRITE_TIMEOUT="10"            # domyślna wartość; przepisanie pytania
+# export RAG_GEMINI_CONVERSATION_TIMEOUT="10"       # domyślna wartość; rozmówca przy no_results
 # export RAG_HISTORY_TURNS="5"                      # domyślna wartość; ile pytań z history
 # export RAG_HISTORY_QUESTION_CHARS="500"           # domyślna wartość; limit znaków na pytanie
 ```
@@ -220,10 +221,14 @@ po 500 znaków; nadwyżka jest obcinana. Przy wyłączonym Gemini, błędzie alb
 Pola odpowiedzi:
 
 * `status` — `ok`, `not_in_docs`, `no_results`, `disabled`, `rate_limited` albo `error`.
-* `answer` — odpowiedź Gemini w Markdown albo `null`.
+* `answer` — odpowiedź Gemini w Markdown albo `null`. Przy `no_results` to krótka odpowiedź
+  rozmówcy (small talk, pytanie spoza instrukcji, „od czego zacząć”), który zna tylko tytuły
+  instrukcji i nigdy nie podaje kroków; `null`, gdy rozmówca nie odpowiedział.
 * `finish_reason` — powód zakończenia generowania (`STOP`, `MAX_TOKENS`, ...) albo `null`.
 * `sources` — dopasowane sekcje dokumentacji (obecne też przy `disabled` i `rate_limited`).
-* `suggestions` — tytuły najbliższych instrukcji, tylko przy `no_results`.
+* `suggestions` — tylko przy `no_results`: tematy wybrane przez rozmówcę (0–3, `distance` może
+  być `null`) albo 3 najbliższe instrukcje, gdy rozmówca nie odpowiedział (Gemini wyłączone,
+  błąd, 10-sekundowy timeout).
 
 Kody HTTP: `200` dla `ok`/`not_in_docs`/`no_results`/`disabled`, `429` dla `rate_limited`,
 `503` dla `error` oraz niedostępności Redis/Ollama, `400` dla pustego lub brakującego

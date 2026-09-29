@@ -18,21 +18,21 @@ module Api
       # history: poprzednie pytania użytkownika; puste = zachowanie sprzed BRO-72.
       ask = Rag::Ask.call(question, history: params[:history], env: Rails.env, logger: Rails.logger)
 
-      render json: ask_response(ask.answer, ask.search_result), status: STATUS_HTTP.fetch(ask.answer.status)
+      render json: ask_response(ask.answer, ask.suggestions), status: STATUS_HTTP.fetch(ask.answer.status)
     rescue Rag::OllamaClient::Error, Redis::BaseError => e
       Rails.logger.error("[api/ask] #{e.class}: #{e.message}")
-      render json: ask_response(Rag::Answer::Result.new(status: :error, sources: []), nil), status: :service_unavailable
+      render json: ask_response(Rag::Answer::Result.new(status: :error, sources: []), []), status: :service_unavailable
     end
 
     private
 
-    def ask_response(result, search_result)
+    def ask_response(result, suggestions)
       {
         status: result.status.to_s,
         answer: result.text,
         finish_reason: result.finish_reason,
         sources: Array(result.sources).each_with_index.map { |source, i| source_json(source, i) },
-        suggestions: result.status == :no_results ? Array(search_result&.suggestions) : []
+        suggestions: result.status == :no_results ? Array(suggestions) : []
       }
     end
 
