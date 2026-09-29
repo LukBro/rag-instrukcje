@@ -72,6 +72,7 @@ namespace :rag do
     puts "Status: #{answer.status}"
     puts answer.text if answer.text
     answer.sources.each_with_index { |s, i| puts format("[%d] %.4f %s (%s)", i + 1, s[:distance], s[:heading], s[:source]) }
+    ask.suggestions.each { |s| puts "Temat: #{s[:title]} (#{s[:source]})" } if answer.status == :no_results
     puts format("Czas: razem %.2f s | finish_reason=%s | usage=%s",
                 total_time, answer.finish_reason, answer.usage)
   end

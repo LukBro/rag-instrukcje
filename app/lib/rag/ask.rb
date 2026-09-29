@@ -11,7 +11,8 @@ module Rag
   # zwraca nil i wtedy nic się nie zmienia.
   class Ask
     # rewritten_question: wypełnione tylko wtedy, gdy pytanie zostało przepisane (do logu, nie do API).
-    Result = Struct.new(:answer, :search_result, :rewritten_question, keyword_init: true)
+    # suggestions: tematy do pokazania przy no_results (od rozmówcy albo najbliższe z wyszukiwania).
+    Result = Struct.new(:answer, :search_result, :rewritten_question, :suggestions, keyword_init: true)
 
     def self.call(question, history: [], env: Rails.env, logger: nil)
       question = question.to_s.strip
@@ -19,13 +20,20 @@ module Rag
       effective = rewritten || question
 
       search_result = Search.call(effective)
-      answer = if search_result.found?
-                 Answer.call(effective, env: env, search_result: search_result, logger: logger)
-               else
-                 Answer::Result.new(status: :no_results, sources: [])
-               end
+      if search_result.found?
+        answer = Answer.call(effective, env: env, search_result: search_result, logger: logger)
+        return Result.new(answer: answer, search_result: search_result, rewritten_question: rewritten, suggestions: [])
+      end
 
-      Result.new(answer: answer, search_result: search_result, rewritten_question: rewritten)
+      # BRO-73: rozmówca dostaje wiadomość oryginalną - przepisanie służy wyszukiwaniu, a przy
+      # „dzięki!” czy „co słychać?” potrafi dopisać kontekst, którego użytkownik nie miał na myśli.
+      reply = Conversation.call(question, history: history, env: env, nearest: search_result.suggestions, logger: logger)
+      Result.new(
+        answer: Answer::Result.new(status: :no_results, sources: [], text: reply&.text),
+        search_result: search_result,
+        rewritten_question: rewritten,
+        suggestions: reply ? reply.suggestions : search_result.suggestions
+      )
     end
 
     # Samodzielne pytanie albo nil, gdy nie ma historii lub przepisanie nie było potrzebne/możliwe.
