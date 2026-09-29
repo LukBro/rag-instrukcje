@@ -31,9 +31,14 @@ Czat brzmi jak wyszukiwarka, nie jak pomocnik.
 - **Ton:** ciepły, rzeczowy, na „Ty”, 1–3 zdania, bez emoji (wybór właściciela).
 - **`not_in_docs` bez zmian w API** — bez drugiego wywołania modelu; łagodniejszy tekst po stronie
   klienta.
-- **Reguła „kolejny krok”** w `Answer::SYSTEM_PROMPT`: jedno zdanie „Następnie możesz…”, tylko gdy
-  inny z podanych fragmentów opisuje czynność wykonywaną zwykle zaraz potem. To jedyna zmiana
-  promptu z BRO-27.
+- **Reguła „kolejny krok” — sprawdzona i odrzucona.** Planowana jako jedno zdanie „Następnie
+  możesz…” w `Answer::SYSTEM_PROMPT`, gdy inny podany fragment opisuje czynność wykonywaną zaraz
+  potem. Trzy wersje reguły zmierzone `rag:eval_answers`: rozkład statusów bez zmian, ale mniej
+  więcej połowa zdań była szumem — powtarzała odpowiedź, proponowała cofnięcie („usunąć zadanie” po
+  jego odhaczeniu) albo czynność sprzeczną z pytaniem — a ostatnia wersja zamieniła jedną poprawną
+  odpowiedź na odmowę. Model nie trzyma się zakazu proponowania kroków z tego samego fragmentu.
+  `Answer::SYSTEM_PROMPT` zostaje bez zmian względem BRO-27. Deterministyczna alternatywa po
+  stronie klienta: pozostałe źródła odpowiedzi jako „Zobacz też”.
 
 Odrzucone: klasyfikator intencji dla każdego pytania i prompt „przewodnika” bez reguły trzymania
 się instrukcji — dodatkowe wywołanie modelu przy każdym pytaniu (zmierzony ogon Gemini do 161 s)
@@ -55,7 +60,7 @@ i kody HTTP bez zmian. Klient, który przy `no_results` ignoruje `answer`, dzia�
 ## Przebieg żądania
 
 1. Jak dziś: opcjonalne przepisanie pytania z historią (BRO-72) i `Search.call`.
-2. Znaleziono → `Answer` (z regułą „kolejny krok”).
+2. Znaleziono → `Answer`, bez zmian.
 3. Nie znaleziono → `Rag::Conversation` z pytaniem **oryginalnym**, historią pytań i katalogiem
    instrukcji. Wynik: tekst i wybrane tematy. `nil` → dzisiejsze `no_results`.
 
@@ -110,8 +115,8 @@ i kody HTTP bez zmian. Klient, który przy `no_results` ignoruje `answer`, dzia�
 - Request spec: `no_results` z `answer` i tematami rozmówcy; degradacja bez zmian kontraktu.
 - Na żywo: small talk z tabeli wyżej i pytania spoza zakresu z `golden.yml` — żadna odpowiedź nie
   zawiera kroków; small talk bez tematów.
-- Reguła „kolejny krok”: `rag:eval_answers` przed i po — rozkład statusów bez zmian, zdanie
-  „Następnie możesz…” odwołuje się wyłącznie do podanych fragmentów.
+- Reguła „kolejny krok”: `rag:eval_answers` przed i po — wynik w sekcji „Rozstrzygnięcia”
+  (odrzucona).
 
 ## Klient (palserwis, poza tym repo)
 
