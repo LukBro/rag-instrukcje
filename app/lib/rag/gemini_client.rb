@@ -30,12 +30,17 @@ module Rag
       @sleeper = sleeper
     end
 
-    def generate(model:, system_instruction:, user_text:, max_output_tokens:, thinking_level: nil)
+    def generate(model:, system_instruction:, user_text:, max_output_tokens:, thinking_level: nil, response_schema: nil)
       raise ArgumentError, "Niepoprawna nazwa modelu: #{model.inspect}" unless model.to_s.match?(/\A[\w.\-]+\z/)
 
       generation_config = { maxOutputTokens: max_output_tokens }
       # Bez thinking_level obowiązuje domyślne ustawienie modelu (modele 3.x mają thinking domyślnie włączony).
       generation_config[:thinkingConfig] = { thinkingLevel: thinking_level } if thinking_level
+      # Wymuszony JSON (BRO-73): model zwraca obiekt zgodny ze schematem zamiast wolnego tekstu.
+      if response_schema
+        generation_config[:responseMimeType] = "application/json"
+        generation_config[:responseSchema] = response_schema
+      end
       # temperature celowo nieustawiane: dokumentacja zaleca domyślne wartości dla modeli 3.x.
       body = {
         systemInstruction: { parts: [{ text: system_instruction }] },
