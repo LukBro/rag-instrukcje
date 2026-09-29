@@ -2,8 +2,9 @@
 
 module Rag
   # Przepisuje pytanie doprecyzowujące ("a jak to usunąć?") na samodzielne, na podstawie
-  # poprzednich pytań użytkownika. Wołane tylko jako fallback, gdy Search nic nie znalazło:
-  # to dodatkowe wywołanie Gemini, a zmierzony ogon latencji dochodził do 161 s (BRO-72).
+  # poprzednich pytań użytkownika. Wołane w każdej turze z niepustą historią, przed Search:
+  # pytanie doprecyzowujące zwykle trafia w niewłaściwą instrukcję poniżej progu, więc brak
+  # wyników nie nadaje się na wyzwalacz. Dla pytania samodzielnego zwraca nil (BRO-72).
   class QuestionRewriter
     MODEL = ENV.fetch("RAG_GEMINI_REWRITE_MODEL", Answer::MODEL)
     # Wynikiem jest jedno zdanie; 64 tokeny wystarczają i ograniczają czas odpowiedzi.
