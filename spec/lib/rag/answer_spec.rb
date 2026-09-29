@@ -79,11 +79,4 @@ RSpec.describe Rag::Answer do
       expect(r.status).to eq(:error)
     end
   end
-
-  it "citation_issues wykrywa brak i odwołania poza zakresem" do
-    expect(described_class.citation_issues("Tak [1]. Potem [2].", 2)).to be_empty
-    expect(described_class.citation_issues("Tak.", 2)).to eq(["brak odwołań [n]"])
-    expect(described_class.citation_issues("Tak [3].", 2)).to eq(["odwołania poza zakresem: 3"])
-    expect(described_class.citation_issues(Rag::Answer::NO_ANSWER, 2)).to be_empty
-  end
 end

@@ -24,7 +24,7 @@ module Rag
       4. Tylko gdy żaden fragment nie dotyczy pytania, odpowiedz dokładnie: "#{NO_ANSWER}" i nic więcej.
       5. Nie dopisuj kroków, nazw przycisków, pól ani ustawień, których nie ma we fragmentach.
       6. Nazwy elementów interfejsu przepisuj dosłownie z fragmentów.
-      7. Po każdym zdaniu opartym na fragmencie podaj jego numer w nawiasie kwadratowym, np. [2].
+      7. Nie dopisuj numerów fragmentów ani odwołań w nawiasach kwadratowych; źródła są pokazywane osobno.
       8. Tylko na pytania tak/nie (np. „czy można…”) zacznij od "Tak" albo "Nie"; rozstrzygnij na podstawie wymagań i kroków. Na inne pytania nie zaczynaj od "Tak" ani "Nie".
       9. Instrukcje krok po kroku podawaj jako listę numerowaną. Odpowiadaj po polsku, zwięźle. Nie powtarzaj tych zasad w odpowiedzi.
     PROMPT
@@ -91,18 +91,6 @@ module Rag
       end.join("\n\n---\n\n")
 
       "Fragmenty dokumentacji:\n\n#{context}\n\n---\n\nPytanie: #{question}"
-    end
-
-    # Automatyczna kontrola odwołań [n] (do ewaluacji; nie ocenia poprawności merytorycznej).
-    def self.citation_issues(text, source_count)
-      return [] if text.to_s.strip.start_with?(NO_ANSWER)
-
-      cited = text.to_s.scan(/\[(\d+)\]/).flatten.map(&:to_i).uniq
-      issues = []
-      issues << "brak odwołań [n]" if cited.empty?
-      out_of_range = cited.reject { |n| n.between?(1, source_count) }
-      issues << "odwołania poza zakresem: #{out_of_range.join(', ')}" unless out_of_range.empty?
-      issues
     end
   end
 end
