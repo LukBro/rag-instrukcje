@@ -60,17 +60,20 @@ namespace :rag do
     question = ENV["Q"].to_s.strip
     abort 'Użycie: bin/rails rag:ask Q="pytanie"' if question.empty?
 
-    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    search = Rag::Search.call(question)
-    search_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
-    answer = Rag::Answer.call(question, env: Rails.env, search_result: search, logger: Logger.new($stdout))
-    total_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+    # HISTORY: poprzednie pytania użytkownika rozdzielone "|", np. HISTORY="jak dodać adres?"
+    history = ENV["HISTORY"].to_s.split("|").map(&:strip)
 
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    ask = Rag::Ask.call(question, history: history, env: Rails.env, logger: Logger.new($stdout))
+    total_time = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+    answer = ask.answer
+
+    puts "Pytanie przepisane: #{ask.rewritten_question}" if ask.rewritten_question
     puts "Status: #{answer.status}"
     puts answer.text if answer.text
     answer.sources.each_with_index { |s, i| puts format("[%d] %.4f %s (%s)", i + 1, s[:distance], s[:heading], s[:source]) }
-    puts format("Czas: wyszukiwanie %.2f s, razem %.2f s | finish_reason=%s | usage=%s",
-                search_time, total_time, answer.finish_reason, answer.usage)
+    puts format("Czas: razem %.2f s | finish_reason=%s | usage=%s",
+                total_time, answer.finish_reason, answer.usage)
   end
 
   desc "Odpowiedzi Gemini dla pytań z golden.yml -> tmp/rag_answers_*.md (do ręcznej oceny)"
@@ -138,16 +141,33 @@ namespace :rag do
     candidates = Integer(ENV.fetch("K", Rag::Search::CANDIDATES.to_s))
     cutoff = Rag::Search::RESULTS
     cases = YAML.safe_load_file(Rails.root.join("spec/rag/golden.yml"))
-    recalls = []
-    reciprocal_ranks = []
+    # Pytania z history (rozmowy wielotury) liczone osobno: przechodzą przez przepisanie pytania,
+    # więc ich skuteczność nie powinna rozmywać wyniku pytań jednoturowych.
+    recalls = { single: [], chat: [] }
+    reciprocal_ranks = { single: [], chat: [] }
     in_scope_distances = []
     out_of_scope_distances = []
 
     cases.each do |c|
       expected = Array(c["expected_sources"])
-      ranked = Rag::Retriever.call(c["question"], k: candidates).uniq { |r| r[:source] }
+      history = Rag::QuestionRewriter.normalize(c["history"])
+      bucket = history.empty? ? :single : :chat
+      question = c["question"]
+
+      # Ta sama ścieżka co w API: Rag::Ask decyduje, czy pytanie wymaga przepisania.
+      # Logger obowiązkowy: bez niego nieudane przepisanie (503, timeout) przechodzi niezauważone
+      # i wynik rozmów wygląda jak pomiar funkcji, a jest pomiarem pytań surowych.
+      rewritten = Rag::Ask.resolve_question(question, history: history, env: Rails.env,
+                                                      logger: Logger.new($stdout))
+      if bucket == :chat && rewritten.nil?
+        puts "UWAGA: #{question.inspect} - brak przepisania, wynik dotyczy pytania surowego"
+      end
+      question = rewritten if rewritten
+
+      ranked = Rag::Retriever.call(question, k: candidates).uniq { |r| r[:source] }
       top = ranked.first
-      line = format("%-60s top=%.4f %s", c["question"][0, 60], top ? top[:distance] : -1, top&.dig(:source))
+      label = question == c["question"] ? c["question"] : "#{c['question']} -> #{question}"
+      line = format("%-60s top=%.4f %s", label[0, 60], top ? top[:distance] : -1, top&.dig(:source))
 
       if expected.empty?
         out_of_scope_distances << top[:distance] if top
@@ -157,15 +177,20 @@ namespace :rag do
 
       in_scope_distances << top[:distance] if top
       got = ranked.first(cutoff).map { |r| r[:source] }
-      recalls << (expected & got).size.fdiv(expected.size)
+      recalls[bucket] << (expected & got).size.fdiv(expected.size)
       rank = got.index { |s| expected.include?(s) }
-      reciprocal_ranks << (rank ? 1.0 / (rank + 1) : 0.0)
-      puts "#{line}  #{rank ? "trafienie ##{rank + 1}" : 'PUDŁO'}"
+      reciprocal_ranks[bucket] << (rank ? 1.0 / (rank + 1) : 0.0)
+      puts "#{line}  #{rank ? "trafienie ##{rank + 1}" : 'PUDŁO'}#{bucket == :chat ? ' [ROZMOWA]' : ''}"
     end
 
-    abort "Brak pytań z expected_sources w golden.yml" if recalls.empty?
-    puts "Recall@#{cutoff} (pliki): #{(recalls.sum / recalls.size).round(3)}"
-    puts "MRR: #{(reciprocal_ranks.sum / reciprocal_ranks.size).round(3)}"
+    abort "Brak pytań z expected_sources w golden.yml" if recalls.values.all?(&:empty?)
+    avg = ->(values) { values.empty? ? nil : (values.sum / values.size).round(3) }
+    puts "Recall@#{cutoff} (pliki), pytania jednoturowe: #{avg.call(recalls[:single])}"
+    puts "MRR, pytania jednoturowe: #{avg.call(reciprocal_ranks[:single])}"
+    if recalls[:chat].any?
+      puts "Recall@#{cutoff} (pliki), rozmowy wielotury: #{avg.call(recalls[:chat])} (#{recalls[:chat].size} pytań)"
+      puts "MRR, rozmowy wielotury: #{avg.call(reciprocal_ranks[:chat])}"
+    end
     puts "Dystans top, pytania w zakresie:  min=#{in_scope_distances.min&.round(4)} max=#{in_scope_distances.max&.round(4)}"
     unless out_of_scope_distances.empty?
       puts "Dystans top, pytania spoza zakresu: min=#{out_of_scope_distances.min.round(4)} max=#{out_of_scope_distances.max.round(4)}"

@@ -125,6 +125,9 @@ export RAG_GEMINI_API_KEY="..."            # opcjonalnie; bez klucza API zwraca 
 # export RAG_GEMINI_MODEL="gemini-3.5-flash-lite"   # domyślna wartość
 # export RAG_GEMINI_THINKING_LEVEL="low"            # domyślna wartość; pusta = ustawienie modelu
 # export RAG_GEMINI_TIMEOUT="90"                    # domyślna wartość (sekundy)
+# export RAG_GEMINI_REWRITE_TIMEOUT="15"            # domyślna wartość; przepisanie pytania
+# export RAG_HISTORY_TURNS="5"                      # domyślna wartość; ile pytań z history
+# export RAG_HISTORY_QUESTION_CHARS="500"           # domyślna wartość; limit znaków na pytanie
 ```
 
 Po zmianie `~/.bashrc` uruchom serwer w nowej sesji SSH albo po `source ~/.bashrc` —
@@ -197,6 +200,22 @@ curl -s -X POST http://localhost:3001/api/ask \
   -H 'Content-Type: application/json' \
   -d '{"question":"..."}'
 ```
+
+Opcjonalne pole `history` obsługuje pytania doprecyzowujące („a jak to usunąć?”). Jest to tablica
+**poprzednich pytań użytkownika**, najstarsze pierwsze — odpowiedzi asystenta do niej nie wchodzą.
+Stan rozmowy trzyma klient; serwer nic nie przechowuje.
+
+```bash
+curl -s -X POST http://localhost:3001/api/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"a jak to usunąć?","history":["jak dodać adres dostawy klienta?"]}'
+```
+
+Gdy `history` jest niepuste, pytanie jest najpierw przepisywane na samodzielne — decyzję, czy to
+w ogóle potrzebne, podejmuje model (pytanie samodzielne zostaje bez zmian). Brak `history` =
+zachowanie jak przed tą zmianą, bez żadnego dodatkowego wywołania. Liczą się 5 ostatnich pytań,
+po 500 znaków; nadwyżka jest obcinana. Przy wyłączonym Gemini, błędzie albo przekroczeniu
+10-sekundowego timeoutu wyszukiwanie idzie po pytaniu oryginalnym, czyli jak dotąd.
 
 Pola odpowiedzi:
 
